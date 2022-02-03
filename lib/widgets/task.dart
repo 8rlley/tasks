@@ -3,8 +3,14 @@ import 'package:flutter/cupertino.dart';
 class Task {
   String title;
   bool isCompleted;
+  TextEditingController? taskController;
+  FocusNode? taskFocusNode;
 
-  Task({required this.title, this.isCompleted = false});
+  Task(
+      {this.title = '',
+      this.isCompleted = false,
+      this.taskController,
+      this.taskFocusNode});
 
   Task.fromJson(Map<String, dynamic> json)
       : title = json['title'],

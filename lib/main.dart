@@ -32,15 +32,26 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  List<TextEditingController> taskContrtollerList = [];
-  late FocusNode newTaskFocusNode;
-
+  late SharedPreferences sharedPreferences;
   List<Task> taskList = [];
 
   @override
   void initState() {
-    newTaskFocusNode = FocusNode();
+    initSharedPreferenses();
     super.initState();
+  }
+
+  initSharedPreferenses() async {
+    sharedPreferences = await SharedPreferences.getInstance();
+  }
+
+  @override
+  void dispose() {
+    taskList.forEach((e) {
+      e.taskFocusNode?.dispose();
+      e.taskController?.dispose();
+    });
+    super.dispose();
   }
 
   @override
@@ -61,82 +72,116 @@ class _MyHomePageState extends State<MyHomePage> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('Tasks',
-                    style: GoogleFonts.inter(
-                        fontSize: 54,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.black)),
-                GestureDetector(
-                  onTap: () {
-                    taskList.insert(0, Task(title: ''));
-                    taskContrtollerList.insert(0, TextEditingController());
-                    setState(() {});
-                  },
-                  child: Container(
-                    width: 52,
-                    height: 52,
-                    decoration: BoxDecoration(
-                      color: const Color(0xffF2F3FF),
-                      border:
-                          Border.all(width: 1, color: const Color(0xffEBEBEB)),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: const Icon(
-                      Icons.add_rounded,
-                      size: 40,
-                      color: Color(0xff575767),
-                    ),
-                  ),
-                ),
+                topTitleText(),
+                plusButton(),
               ],
             ),
-            Container(
-              margin: const EdgeInsets.symmetric(vertical: 25),
-              height: 1,
-              color: const Color(0xffEBEBEB),
-            ),
-            Flexible(
-              child: SingleChildScrollView(
-                child: ListView.builder(
-                    padding: EdgeInsets.zero,
-                    physics: const NeverScrollableScrollPhysics(),
-                    shrinkWrap: true,
-                    itemCount: taskList.length,
-                    itemBuilder: (context, index) {
-                      // taskList[index].title = taskContrtollerList[index].text;
-                      return Row(
-                        children: [
-                          Checkbox(
-                              value: taskList[index].isCompleted,
-                              onChanged: (_) {
-                                setState(() {
-                                  taskList[index].isCompleted =
-                                      !taskList[index].isCompleted;
-                                });
-                              }),
-                          SizedBox(
-                            width: MediaQuery.of(context).size.width * 0.3,
-                            child: TextField(
-                              controller: taskContrtollerList[index],
-                              // autofocus: taskContrtollerList[index] == 0
-                              //     ? true
-                              //     : false,
-                              onSubmitted: (value) => setState(() {
-                                taskList[index].title = value;
-                              }),
-                              decoration: InputDecoration(
-                                  border: InputBorder.none,
-                                  hintText: taskList[index].title),
-                            ),
-                          ),
-                        ],
-                      );
-                    }),
-              ),
-            ),
+            topUnderline(),
+            taskBuilder(),
           ],
         ),
       ),
     );
+  }
+
+  Widget topTitleText() {
+    return Text('Tasks',
+        style: GoogleFonts.inter(
+            fontSize: 54, fontWeight: FontWeight.w800, color: Colors.black));
+  }
+
+  Widget plusButton() {
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          taskList.insert(
+              0,
+              Task(
+                  taskFocusNode: FocusNode(),
+                  taskController: TextEditingController()));
+        });
+        WidgetsBinding.instance?.addPostFrameCallback((_) {
+          FocusScope.of(context).requestFocus(taskList[0].taskFocusNode);
+        });
+      },
+      child: Container(
+        width: 52,
+        height: 52,
+        decoration: BoxDecoration(
+          color: const Color(0xffF2F3FF),
+          border: Border.all(width: 1, color: const Color(0xffEBEBEB)),
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: const Icon(
+          Icons.add_rounded,
+          size: 40,
+          color: Color(0xff575767),
+        ),
+      ),
+    );
+  }
+
+  Widget topUnderline() {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 25),
+      height: 1,
+      color: const Color(0xffEBEBEB),
+    );
+  }
+
+  Widget taskBuilder() {
+    return Flexible(
+      child: SingleChildScrollView(
+        child: ListView.builder(
+            padding: EdgeInsets.zero,
+            physics: const NeverScrollableScrollPhysics(),
+            shrinkWrap: true,
+            itemCount: taskList.length,
+            itemBuilder: (context, index) {
+              return Row(
+                children: [
+                  Checkbox(
+                      value: taskList[index].isCompleted,
+                      onChanged: (_) {
+                        setState(() {
+                          setCompletness(taskList[index]);
+                        });
+                      }),
+                  SizedBox(
+                    width: MediaQuery.of(context).size.width * 0.3,
+                    child: TextField(
+                      focusNode: taskList[index].taskFocusNode,
+                      controller: taskList[index].taskController,
+                      onSubmitted: (value) => setState(() {
+                        taskList[index].title = value;
+                        saveData();
+                      }),
+                      decoration: InputDecoration(
+                          border: InputBorder.none,
+                          hintText: taskList[index].title),
+                    ),
+                  ),
+                ],
+              );
+            }),
+      ),
+    );
+  }
+
+  void setCompletness(Task task) {
+    task.isCompleted = !task.isCompleted;
+  }
+
+  void saveData() {
+    List<String> taskListJson =
+        taskList.map((e) => jsonEncode(e.toJson())).toList();
+    sharedPreferences.setStringList('taskListJson', taskListJson);
+    print(taskListJson);
+  }
+
+  void readData() {
+    List<String>? taskListJson =
+         sharedPreferences.getStringList('taskListJson');
+    taskList = taskListJson.map((e) => Task.fromJson(jsonDecode(e))).toList();
   }
 }
