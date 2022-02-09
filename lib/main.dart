@@ -43,6 +43,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   initSharedPreferenses() async {
     sharedPreferences = await SharedPreferences.getInstance();
+    readData();
   }
 
   @override
@@ -57,13 +58,6 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          taskList.forEach((e) {
-            print('${e.title},${e.isCompleted}');
-          });
-        },
-      ),
       body: Container(
         margin: const EdgeInsets.all(20),
         child: Column(
@@ -129,44 +123,7 @@ class _MyHomePageState extends State<MyHomePage> {
     );
   }
 
-  Widget taskBuilder() {
-    return Flexible(
-      child: SingleChildScrollView(
-        child: ListView.builder(
-            padding: EdgeInsets.zero,
-            physics: const NeverScrollableScrollPhysics(),
-            shrinkWrap: true,
-            itemCount: taskList.length,
-            itemBuilder: (context, index) {
-              return Row(
-                children: [
-                  Checkbox(
-                      value: taskList[index].isCompleted,
-                      onChanged: (_) {
-                        setState(() {
-                          setCompletness(taskList[index]);
-                        });
-                      }),
-                  SizedBox(
-                    width: MediaQuery.of(context).size.width * 0.3,
-                    child: TextField(
-                      focusNode: taskList[index].taskFocusNode,
-                      controller: taskList[index].taskController,
-                      onSubmitted: (value) => setState(() {
-                        taskList[index].title = value;
-                        saveData();
-                      }),
-                      decoration: InputDecoration(
-                          border: InputBorder.none,
-                          hintText: taskList[index].title),
-                    ),
-                  ),
-                ],
-              );
-            }),
-      ),
-    );
-  }
+  
 
   void setCompletness(Task task) {
     task.isCompleted = !task.isCompleted;
@@ -176,12 +133,13 @@ class _MyHomePageState extends State<MyHomePage> {
     List<String> taskListJson =
         taskList.map((e) => jsonEncode(e.toJson())).toList();
     sharedPreferences.setStringList('taskListJson', taskListJson);
-    print(taskListJson);
   }
 
   void readData() {
-    List<String>? taskListJson =
-         sharedPreferences.getStringList('taskListJson');
-    taskList = taskListJson.map((e) => Task.fromJson(jsonDecode(e))).toList();
+    var taskListJson = sharedPreferences.getStringList('taskListJson');
+    if (taskListJson != null) {
+      taskList = taskListJson.map((e) => Task.fromJson(jsonDecode(e))).toList();
+      setState(() {});
+    }
   }
 }
